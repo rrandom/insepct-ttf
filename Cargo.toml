@@ -10,6 +10,7 @@ edition = "2018"
 ttf-parser = "0.6.1"
 iced = {path="../../rust-play/iced", features = ["canvas", "tokio", "debug"]}
 rand = "0.7"
+nfd = "0.0.4"
 
 
 [dev-dependencies]
