@@ -8,9 +8,10 @@ edition = "2018"
 
 [dependencies]
 ttf-parser = "0.6.1"
-iced = {path="../../rust-play/iced", features = ["canvas", "tokio", "debug"]}
+iced = {path="../../rust-play/iced", features = ["canvas", "tokio", "debug", "async-std"]}
 rand = "0.7"
 nfd = "0.0.4"
+async-std = "1.6.0"
 
 
 [dev-dependencies]
