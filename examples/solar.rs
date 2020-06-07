@@ -8,8 +8,8 @@
 //! [1]: https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Basic_animations#An_animated_solar_system
 use iced::{
     canvas::{self, Cursor, Path, Stroke},
-    executor, time, window, Application, Canvas, Color, Command, Element,
-    Length, Point, Rectangle, Settings, Size, Subscription, Vector,
+    executor, time, window, Application, Canvas, Color, Command, Element, Length, Point, Rectangle,
+    Settings, Size, Subscription, Vector,
 };
 
 use std::time::Instant;
@@ -59,8 +59,7 @@ impl Application for SolarSystem {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        time::every(std::time::Duration::from_millis(10))
-            .map(|instant| Message::Tick(instant))
+        time::every(std::time::Duration::from_millis(10)).map(|instant| Message::Tick(instant))
     }
 
     fn view(&mut self) -> Element<Message> {
@@ -116,14 +115,8 @@ impl State {
             .map(|_| {
                 (
                     Point::new(
-                        rng.gen_range(
-                            -(width as f32) / 2.0,
-                            width as f32 / 2.0,
-                        ),
-                        rng.gen_range(
-                            -(height as f32) / 2.0,
-                            height as f32 / 2.0,
-                        ),
+                        rng.gen_range(-(width as f32) / 2.0, width as f32 / 2.0),
+                        rng.gen_range(-(height as f32) / 2.0, height as f32 / 2.0),
                     ),
                     rng.gen_range(0.5, 1.0),
                 )
@@ -133,11 +126,7 @@ impl State {
 }
 
 impl<Message> canvas::Program<Message> for State {
-    fn draw(
-        &self,
-        bounds: Rectangle,
-        _cursor: Cursor,
-    ) -> Vec<canvas::Geometry> {
+    fn draw(&self, bounds: Rectangle, _cursor: Cursor) -> Vec<canvas::Geometry> {
         use std::f32::consts::PI;
 
         let background = self.space_cache.draw(bounds.size(), |frame| {
@@ -183,10 +172,7 @@ impl<Message> canvas::Program<Message> for State {
                 let earth = Path::circle(Point::ORIGIN, Self::EARTH_RADIUS);
                 let shadow = Path::rectangle(
                     Point::new(0.0, -Self::EARTH_RADIUS),
-                    Size::new(
-                        Self::EARTH_RADIUS * 4.0,
-                        Self::EARTH_RADIUS * 2.0,
-                    ),
+                    Size::new(Self::EARTH_RADIUS * 4.0, Self::EARTH_RADIUS * 2.0),
                 );
 
                 frame.fill(&earth, Color::from_rgb8(0x6B, 0x93, 0xD6));
