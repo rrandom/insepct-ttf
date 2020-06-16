@@ -993,6 +993,7 @@ version = "0.2.2"
 dependencies = [
  "iced_core",
  "iced_futures",
+ "num-traits",
  "twox-hash",
  "unicode-segmentation",
 ]
@@ -1012,6 +1013,7 @@ dependencies = [
  "iced_core",
  "iced_futures",
  "iced_style",
+ "num-traits",
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures 0.4.13",
