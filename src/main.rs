@@ -70,7 +70,7 @@ impl Application for App {
         match msg {
             Message::OpenFilePressed => return Command::perform(dialog::open(), Message::Loaded),
             Message::Loaded(r) => {
-                dbg!(&r);
+                // dbg!(&r);
                 if let Some(RawFontInfo{ path, data}) = r.ok().take() {
                     self.font_path = Some(path);
                     return Command::perform(parse_font(data), Message::Parsed);
@@ -84,7 +84,7 @@ impl Application for App {
                         std::process::exit(1);
                     },
                 };
-                dbg!(&font);
+                // dbg!(&font);
                 self.font_info = Some(font);
             }
         }
