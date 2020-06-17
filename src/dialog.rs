@@ -3,9 +3,9 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug)]
-pub struct RawFontInfo{
+pub struct RawFontInfo {
     pub path: PathBuf,
-    pub data: Vec<u8>
+    pub data: Vec<u8>,
 }
 
 pub async fn open_dialog() -> Result<PathBuf, io::Error> {
@@ -17,7 +17,7 @@ pub async fn open_dialog() -> Result<PathBuf, io::Error> {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidData,
                     "Unable to unwrap data from new file dialog",
-                ))
+                ));
             }
         };
 
@@ -41,12 +41,12 @@ pub async fn open_dialog() -> Result<PathBuf, io::Error> {
     result.push(Path::new(&file_string));
 
     if result.exists() {
-        return Ok(result);
+        Ok(result)
     } else {
-        return Err(io::Error::new(
+        Err(io::Error::new(
             io::ErrorKind::NotFound,
             "File does not exist",
-        ));
+        ))
     }
 }
 
@@ -63,8 +63,8 @@ pub async fn open() -> Result<RawFontInfo, super::LoadError> {
 
     let font_data = async_std::fs::read(path.as_path()).await.unwrap();
 
-    Ok(RawFontInfo{
+    Ok(RawFontInfo {
         path,
-        data: font_data
+        data: font_data,
     })
 }

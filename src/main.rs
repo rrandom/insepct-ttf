@@ -1,6 +1,6 @@
 use iced::{
-    button, executor, Application, Button, Command, Element, HorizontalAlignment,
-    Length, Row, Settings, Text,
+    button, executor, Application, Button, Column, Command, Container, Element,
+    HorizontalAlignment, Length, Row, Settings, Text,
 };
 use std::path::PathBuf;
 
@@ -21,7 +21,7 @@ pub enum LoadError {
 #[derive(Debug, Clone)]
 pub struct FontInfo {
     family_name: String,
-    number_of_glyphs: u16
+    number_of_glyphs: u16,
 }
 
 #[derive(Debug, Clone)]
@@ -30,7 +30,6 @@ enum Message {
     Loaded(Result<RawFontInfo, LoadError>),
     Parsed(Option<FontInfo>),
 }
-
 
 pub async fn parse_font(data: Vec<u8>) -> Option<FontInfo> {
     match async { return ttf_parser::Font::from_data(&data[..], 0) }.await {
@@ -71,18 +70,18 @@ impl Application for App {
             Message::OpenFilePressed => return Command::perform(dialog::open(), Message::Loaded),
             Message::Loaded(r) => {
                 // dbg!(&r);
-                if let Some(RawFontInfo{ path, data}) = r.ok().take() {
+                if let Some(RawFontInfo { path, data }) = r.ok().take() {
                     self.font_path = Some(path);
                     return Command::perform(parse_font(data), Message::Parsed);
                 }
-            },
+            }
             Message::Parsed(f) => {
                 let font = match f {
                     Some(f) => f,
                     None => {
                         eprint!("Error: failed to open a font.");
                         std::process::exit(1);
-                    },
+                    }
                 };
                 // dbg!(&font);
                 self.font_info = Some(font);
@@ -102,16 +101,42 @@ impl Application for App {
             .color([0.5, 0.5, 0.5])
             .horizontal_alignment(HorizontalAlignment::Left);
 
+        let path = self
+            .font_path
+            .as_ref()
+            .and_then(|v| v.to_str())
+            .unwrap_or_default();
 
-        let path = self.font_path.as_ref().and_then(|v| v.to_str()).unwrap_or("");
+        let font_name = self
+            .font_info
+            .as_ref()
+            .map(|f| f.family_name.as_str())
+            .unwrap_or_default();
 
-        let font_name = self.font_info.as_ref().and_then(|v| Some(v.family_name.as_str())).unwrap_or("");
+        let row = Row::new()
+            .spacing(20)
+            .push(open_btn)
+            .push(project_label)
+            .push(Text::new(path));
 
-        let row = Row::new().spacing(20).push(open_btn).push(project_label)
-            .push(Text::new(path))
-            .push(Text::new(font_name));
+        let info_row = Row::new()
+            .push(Text::new(format!("Font name: {} ;", font_name)))
+            .push(Text::new(
+                self.font_info
+                    .as_ref()
+                    .map(|f| format!("number of glyphs: {}", f.number_of_glyphs.to_string()))
+                    .unwrap_or_default(),
+            ));
 
+        let content = Column::new()
+            .max_width(800)
+            .spacing(20)
+            .push(row)
+            .push(info_row);
 
-        row.into()
+        Container::new(content)
+            .width(Length::Fill)
+            .center_x()
+            .into()
     }
 }
