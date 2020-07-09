@@ -1,15 +1,17 @@
 use iced::{
-    button, executor, Application, Button, Column, Command, Container, Element,
+    button, executor, Align, Application, Button, Column, Command, Container, Element,
     HorizontalAlignment, Length, Row, Settings, Text,
 };
+use owned_ttf_parser::{AsFontRef, OwnedFont};
 use std::path::PathBuf;
 
 mod dialog;
+mod glyph_canvas;
 
 use dialog::RawFontInfo;
 
 pub fn main() {
-    App::run(Settings::default())
+    GlyphViewer::run(Settings::default())
 }
 
 #[derive(Debug, Clone)]
@@ -19,45 +21,38 @@ pub enum LoadError {
 }
 
 #[derive(Debug, Clone)]
-pub struct FontInfo {
-    family_name: String,
-    number_of_glyphs: u16,
-}
-
-#[derive(Debug, Clone)]
 enum Message {
     OpenFilePressed,
     Loaded(Result<RawFontInfo, LoadError>),
-    Parsed(Option<FontInfo>),
+    // Parsed(Option<owned_ttf_parser::OwnedFont>),
+    Empty,
+    Next,
 }
 
-pub async fn parse_font(data: Vec<u8>) -> Option<FontInfo> {
-    match async { return ttf_parser::Font::from_data(&data[..], 0) }.await {
-        Some(f) => Some(FontInfo {
-            family_name: f.family_name().unwrap(),
-            number_of_glyphs: f.number_of_glyphs(),
-        }),
+pub async fn parse_font(data: Vec<u8>) -> Option<owned_ttf_parser::OwnedFont> {
+    match async { return OwnedFont::from_vec(data, 0) }.await {
+        Some(f) => Some(f),
         None => None,
     }
 }
 
-struct App {
+#[derive(Default)]
+struct GlyphViewer {
     font_path: Option<PathBuf>,
     button_state: button::State,
-    font_info: Option<FontInfo>,
+    glyph: glyph_canvas::State,
+    font: Option<OwnedFont>,
+    button: button::State,
+    glyph_id: owned_ttf_parser::GlyphId,
 }
 
-impl Application for App {
+impl Application for GlyphViewer {
     type Executor = executor::Default;
     type Message = Message;
     type Flags = ();
 
-    fn new(_flags: ()) -> (App, Command<Self::Message>) {
-        let app = App {
-            font_path: None,
-            button_state: button::State::new(),
-            font_info: None,
-        };
+    fn new(_flags: ()) -> (GlyphViewer, Command<Self::Message>) {
+        let app = Default::default();
         (app, Command::none())
     }
 
@@ -69,23 +64,16 @@ impl Application for App {
         match msg {
             Message::OpenFilePressed => return Command::perform(dialog::open(), Message::Loaded),
             Message::Loaded(r) => {
-                // dbg!(&r);
                 if let Some(RawFontInfo { path, data }) = r.ok().take() {
                     self.font_path = Some(path);
-                    return Command::perform(parse_font(data), Message::Parsed);
+                    self.font = OwnedFont::from_vec(data, 0);
                 }
+            },
+            Message::Next => {
+                self.glyph_id.0 = self.glyph_id.0 + 1;
+                self.glyph.request_redraw();
             }
-            Message::Parsed(f) => {
-                let font = match f {
-                    Some(f) => f,
-                    None => {
-                        eprint!("Error: failed to open a font.");
-                        std::process::exit(1);
-                    }
-                };
-                // dbg!(&font);
-                self.font_info = Some(font);
-            }
+            _ => {},
         }
 
         Command::none()
@@ -107,10 +95,10 @@ impl Application for App {
             .and_then(|v| v.to_str())
             .unwrap_or_default();
 
-        let font_name = self
-            .font_info
+        let font_name: String = self
+            .font
             .as_ref()
-            .map(|f| f.family_name.as_str())
+            .and_then(|f| f.as_font().family_name())
             .unwrap_or_default();
 
         let row = Row::new()
@@ -119,14 +107,20 @@ impl Application for App {
             .push(project_label)
             .push(Text::new(path));
 
+        let number_of_glyphs = self
+            .font
+            .as_ref()
+            .map(|f| {
+                format!(
+                    "number of glyphs: {}",
+                    f.as_font().number_of_glyphs().to_string()
+                )
+            })
+            .unwrap_or_default();
+
         let info_row = Row::new()
             .push(Text::new(format!("Font name: {} ;", font_name)))
-            .push(Text::new(
-                self.font_info
-                    .as_ref()
-                    .map(|f| format!("number of glyphs: {}", f.number_of_glyphs.to_string()))
-                    .unwrap_or_default(),
-            ));
+            .push(Text::new(number_of_glyphs));
 
         let content = Column::new()
             .max_width(800)
@@ -134,9 +128,30 @@ impl Application for App {
             .push(row)
             .push(info_row);
 
-        Container::new(content)
-            .width(Length::Fill)
-            .center_x()
-            .into()
+        let container = Container::new(content).width(Length::Fill).center_x();
+
+        let mut r = Column::new()
+            .padding(0)
+            .spacing(0)
+            .align_items(Align::Center)
+            .push(container);
+
+            if let Some(f) = &self.font {
+                let btn = Button::new(&mut self.button, Text::new("Next"))
+                .padding(8)
+                .on_press(Message::Next);
+
+                r = r
+                .push(Text::new(format!("{}", &self.glyph_id.0)))
+                .push(btn)
+                .push(
+                    self.glyph
+                        .view(f.as_font(), &self.glyph_id)
+                        .map(|_| Message::Empty),
+                );
+            }
+
+            r.into()
+
     }
 }

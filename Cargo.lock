@@ -2104,8 +2104,8 @@ dependencies = [
  "chrono",
  "iced",
  "nfd",
+ "owned_ttf_parser",
  "rand",
- "ttf-parser",
 ]
 
 [[package]]
