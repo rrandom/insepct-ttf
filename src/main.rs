@@ -1,6 +1,6 @@
 use iced::{
     button, executor, Align, Application, Button, Column, Command, Container, Element,
-    HorizontalAlignment, Length, Row, Settings, Text,
+    HorizontalAlignment, Length, Row, Settings, Text, window,
 };
 use owned_ttf_parser::{AsFontRef, OwnedFont};
 use std::path::PathBuf;
@@ -8,7 +8,14 @@ use std::path::PathBuf;
 use dialog::RawFontInfo;
 
 pub fn main() {
-    GlyphViewer::run(Settings::default())
+    GlyphViewer::run(Settings {
+        antialiasing: false,
+        window: window::Settings {
+            size: (400, 400),
+            ..window::Settings::default()
+        },
+        ..Settings::default()
+    });
 }
 
 #[derive(Debug, Clone)]
@@ -21,7 +28,6 @@ pub enum LoadError {
 enum Message {
     OpenFilePressed,
     Loaded(Result<RawFontInfo, LoadError>),
-    // Parsed(Option<owned_ttf_parser::OwnedFont>),
     Empty,
     Next,
 }
@@ -318,6 +324,9 @@ mod glyph_canvas {
 
                     let y_scale: f32 = size.height / bbox.height() as f32;
                     let x_scale: f32 = size.width / bbox.width() as f32;
+
+                    frame.with_save(|f| {
+                    });
 
                     frame.translate(Vector::new(center.x, center.y));
                     frame.scale(y_scale.min(x_scale));
