@@ -33,14 +33,13 @@ pub async fn parse_font(data: Vec<u8>) -> Option<owned_ttf_parser::OwnedFont> {
     }
 }
 
-#[derive(Default)]
 struct GlyphViewer {
     font_path: Option<PathBuf>,
     button_state: button::State,
     glyph: glyph_canvas::State,
     font: Option<OwnedFont>,
     button: button::State,
-    glyph_id: owned_ttf_parser::GlyphId,
+    glyph_info: glyph_info::GlyphInfo,
 }
 
 impl Application for GlyphViewer {
@@ -49,7 +48,14 @@ impl Application for GlyphViewer {
     type Flags = ();
 
     fn new(_flags: ()) -> (GlyphViewer, Command<Self::Message>) {
-        let app = Default::default();
+        let app = GlyphViewer {
+            font_path: None,
+            button_state: Default::default(),
+            glyph: Default::default(),
+            glyph_info: Default::default(),
+            font: None,
+            button: Default::default(),
+        };
         (app, Command::none())
     }
 
@@ -67,8 +73,19 @@ impl Application for GlyphViewer {
                 }
             }
             Message::Next => {
-                self.glyph_id.0 = self.glyph_id.0 + 1;
-                self.glyph.request_redraw();
+                if let Some(font) = &self.font {
+                    let total = font.as_font().number_of_glyphs();
+                    if self.glyph_info.id.0 < total {
+                        self.glyph_info.update();
+
+                        let mut b = glyph_info::Outline(Vec::new());
+                        self.glyph_info.bbox =
+                            font.as_font().outline_glyph(self.glyph_info.id, &mut b);
+                        self.glyph_info.outline = Some(b);
+
+                        self.glyph.request_redraw();
+                    }
+                }
             }
             _ => {}
         }
@@ -133,19 +150,15 @@ impl Application for GlyphViewer {
             .align_items(Align::Center)
             .push(container);
 
-        if let Some(f) = &self.font {
+        if let Some(_) = &self.font {
             let btn = Button::new(&mut self.button, Text::new("Next"))
                 .padding(8)
                 .on_press(Message::Next);
 
             r = r
-                .push(Text::new(format!("{}", &self.glyph_id.0)))
+                .push(Text::new(format!("{:?}", &self.glyph_info.id)))
                 .push(btn)
-                .push(
-                    self.glyph
-                        .view(f.as_font(), &self.glyph_id)
-                        .map(|_| Message::Empty),
-                );
+                .push(self.glyph.view(&self.glyph_info).map(|_| Message::Empty));
         }
 
         r.into()
@@ -237,16 +250,13 @@ mod glyph_canvas {
         cache: Cache,
     }
 
+    use super::glyph_info;
+
     impl State {
-        pub fn view<'a>(
-            &'a mut self,
-            font: &'a owned_ttf_parser::Font<'a>,
-            glyph_id: &'a owned_ttf_parser::GlyphId,
-        ) -> Element<'a, ()> {
+        pub fn view<'a>(&'a mut self, glyph_info: &'a glyph_info::GlyphInfo) -> Element<'a, ()> {
             Canvas::new(GlyphCanvas {
                 state: self,
-                font,
-                glyph_id,
+                glyph_info,
             })
             .width(Length::Fill)
             .height(Length::Fill)
@@ -260,15 +270,12 @@ mod glyph_canvas {
 
     struct GlyphCanvas<'a> {
         state: &'a mut State,
-        font: &'a owned_ttf_parser::Font<'a>,
-        glyph_id: &'a owned_ttf_parser::GlyphId,
+        glyph_info: &'a glyph_info::GlyphInfo,
     }
 
     impl<'a> canvas::Program<()> for GlyphCanvas<'a> {
         fn draw(&self, bounds: Rectangle, _cursor: Cursor) -> Vec<Geometry> {
-            let mut b = Builder(Vec::new());
-
-            if let Some(bbox) = self.font.outline_glyph(*self.glyph_id, &mut b) {
+            if let Some(bbox) = self.glyph_info.bbox {
                 let rect = Rectangle::new(
                     Point::new(bbox.x_min.into(), bbox.y_min.into()),
                     Size::new(bbox.width().into(), bbox.height().into()),
@@ -278,8 +285,8 @@ mod glyph_canvas {
                     let center = frame.center();
 
                     let p = Path::new(|p| {
-                        use DrawType::*;
-                        for c in &b.0 {
+                        use super::glyph_info::DrawType::*;
+                        for c in &self.glyph_info.outline.clone().take().unwrap().0 {
                             match c {
                                 MoveTo { x, y } => p.move_to(Point::new(*x, *y)),
                                 LineTo { x, y } => p.line_to(Point::new(*x, *y)),
@@ -326,10 +333,15 @@ mod glyph_canvas {
             vec![]
         }
     }
+}
 
-    struct Builder(Vec<DrawType>);
+mod glyph_info {
 
-    enum DrawType {
+    #[derive(Clone)]
+    pub struct Outline(pub Vec<DrawType>);
+
+    #[derive(Clone)]
+    pub enum DrawType {
         MoveTo {
             x: f32,
             y: f32,
@@ -355,7 +367,7 @@ mod glyph_canvas {
         Close,
     }
 
-    impl owned_ttf_parser::OutlineBuilder for Builder {
+    impl owned_ttf_parser::OutlineBuilder for Outline {
         fn move_to(&mut self, x: f32, y: f32) {
             self.0.push(DrawType::MoveTo { x, y });
         }
@@ -380,6 +392,19 @@ mod glyph_canvas {
 
         fn close(&mut self) {
             self.0.push(DrawType::Close);
+        }
+    }
+
+    #[derive(Default)]
+    pub struct GlyphInfo {
+        pub bbox: Option<owned_ttf_parser::Rect>,
+        pub id: owned_ttf_parser::GlyphId,
+        pub outline: Option<Outline>,
+    }
+
+    impl GlyphInfo {
+        pub fn update(&mut self) {
+            self.id.0 = self.id.0 + 1;
         }
     }
 }
