@@ -30,6 +30,7 @@ enum Message {
     Loaded(Result<RawFontInfo, LoadError>),
     Empty,
     Next,
+    Prev,
 }
 
 pub async fn parse_font(data: Vec<u8>) -> Option<owned_ttf_parser::OwnedFont> {
@@ -44,7 +45,8 @@ struct GlyphViewer {
     button_state: button::State,
     glyph: glyph_canvas::State,
     font: Option<OwnedFont>,
-    button: button::State,
+    next_button: button::State,
+    prev_button: button::State,
     glyph_info: glyph_info::GlyphInfo,
 }
 
@@ -60,7 +62,8 @@ impl Application for GlyphViewer {
             glyph: Default::default(),
             glyph_info: Default::default(),
             font: None,
-            button: Default::default(),
+            next_button: Default::default(),
+            prev_button: Default::default(),
         };
         (app, Command::none())
     }
@@ -82,17 +85,22 @@ impl Application for GlyphViewer {
                 if let Some(font) = &self.font {
                     let total = font.as_font().number_of_glyphs();
                     if self.glyph_info.id.0 < total {
-                        self.glyph_info.update();
-
-                        let mut b = glyph_info::Outline(Vec::new());
-                        self.glyph_info.bbox =
-                            font.as_font().outline_glyph(self.glyph_info.id, &mut b);
-                        self.glyph_info.outline = Some(b);
-
+                        self.glyph_info.next();
+                        self.update_glyph();
                         self.glyph.request_redraw();
                     }
                 }
             }
+            Message::Prev => {
+                if let Some(_font) = &self.font {
+                    if self.glyph_info.id.0 > 0 {
+                        self.glyph_info.prev();
+                        self.update_glyph();
+                        self.glyph.request_redraw();
+                    }
+                }
+            }
+
             _ => {}
         }
 
@@ -155,9 +163,13 @@ impl Application for GlyphViewer {
             .push(container);
 
         if self.font.is_some() {
-            let btn = Button::new(&mut self.button, Text::new("Next"))
+            let next_btn = Button::new(&mut self.next_button, Text::new("Next"))
                 .padding(8)
                 .on_press(Message::Next);
+
+            let prev_btn = Button::new(&mut self.prev_button, Text::new("Prev"))
+                .padding(8)
+                .on_press(Message::Prev);
 
             let row = Row::new()
                 .height(Length::Fill)
@@ -165,10 +177,20 @@ impl Application for GlyphViewer {
                 .push(self.glyph.view(&self.glyph_info).map(|_| Message::Empty))
                 .push(self.glyph_info.view().map(|_| Message::Empty));
 
-            r = r.push(btn).push(row)
+            r = r.push(next_btn).push(prev_btn).push(row)
         }
 
         r.into()
+    }
+}
+
+impl GlyphViewer {
+    fn update_glyph(&mut self) {
+        if let Some(font) = &self.font {
+            let mut b = glyph_info::Outline(Vec::new());
+            self.glyph_info.bbox = font.as_font().outline_glyph(self.glyph_info.id, &mut b);
+            self.glyph_info.outline = Some(b);
+        }
     }
 }
 
@@ -265,8 +287,8 @@ mod glyph_canvas {
                 state: self,
                 glyph_info,
             })
-            .width(Length::Fill)
-            .height(Length::Fill)
+            .width(Length::Units(400))
+            .height(Length::Units(400))
             .into()
         }
 
@@ -346,10 +368,10 @@ mod glyph_info {
 
     use iced::Element;
 
-    #[derive(Clone)]
+    #[derive(Clone, Debug)]
     pub struct Outline(pub Vec<DrawType>);
 
-    #[derive(Clone)]
+    #[derive(Clone, Debug)]
     pub enum DrawType {
         MoveTo {
             x: f32,
@@ -412,19 +434,26 @@ mod glyph_info {
     }
 
     impl GlyphInfo {
-        pub fn update(&mut self) {
+        pub fn next(&mut self) {
             self.id.0 = self.id.0 + 1;
+        }
+
+        pub fn prev(&mut self) {
+            self.id.0 = self.id.0 - 1;
         }
 
         pub fn view<'a>(&'a self) -> Element<'a, ()> {
             let mut c = iced::Column::new();
 
             if let Some(rect) = self.bbox {
-                c = c.push(iced::Text::new(format!("Index {}", self.id.0)))
-                .push(iced::Text::new(format!("xMin {}", &rect.x_min)))
-                .push(iced::Text::new(format!("xMax {}", &rect.x_max)))
-                .push(iced::Text::new(format!("yMin {}", &rect.y_min)))
-                .push(iced::Text::new(format!("yMax {}", &rect.y_max)));
+                c = c
+                    .push(iced::Text::new(format!("Index {}", self.id.0)))
+                    .push(iced::Text::new(format!("xMin {}", &rect.x_min)))
+                    .push(iced::Text::new(format!("xMax {}", &rect.x_max)))
+                    .push(iced::Text::new(format!("yMin {}", &rect.y_min)))
+                    .push(iced::Text::new(format!("yMax {}", &rect.y_max)));
+
+                // self.outline.as_ref().map(|f| dbg!(f));
             }
 
             c.into()

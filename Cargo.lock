@@ -87,7 +87,7 @@ dependencies = [
  "pin-utils",
  "slab",
  "smol",
- "wasm-bindgen-futures 0.4.13",
+ "wasm-bindgen-futures",
 ]
 
 [[package]]
@@ -455,17 +455,17 @@ dependencies = [
 
 [[package]]
 name = "dodrio"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "979e258439fc88dc7943ea8271479d6c18e25a7b2b032c2c665e1b407b1e2ed8"
+checksum = "b7593dfc68e57dc1d058ada0f151ba07f4b05183c4da4c4df8ff651a81ef0fab"
 dependencies = [
  "bumpalo 2.6.0",
  "cfg-if",
- "futures 0.1.29",
  "fxhash",
  "js-sys",
+ "longest-increasing-subsequence",
  "wasm-bindgen",
- "wasm-bindgen-futures 0.3.27",
+ "wasm-bindgen-futures",
  "web-sys",
 ]
 
@@ -583,12 +583,6 @@ name = "fuchsia-zircon-sys"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3dcaa9ae7725d12cdb85b3ad99a434db70b468c09ded17e012d86b5c1010f7a7"
-
-[[package]]
-name = "futures"
-version = "0.1.29"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1b980f2816d6ee8673b6517b52cb0e808a180efc92e5c19d02cdda79066703ef"
 
 [[package]]
 name = "futures"
@@ -968,10 +962,10 @@ name = "iced_futures"
 version = "0.1.2"
 dependencies = [
  "async-std",
- "futures 0.3.5",
+ "futures",
  "log",
  "tokio",
- "wasm-bindgen-futures 0.4.13",
+ "wasm-bindgen-futures",
 ]
 
 [[package]]
@@ -1016,7 +1010,7 @@ dependencies = [
  "num-traits",
  "url",
  "wasm-bindgen",
- "wasm-bindgen-futures 0.4.13",
+ "wasm-bindgen-futures",
  "web-sys",
 ]
 
@@ -1179,6 +1173,12 @@ checksum = "14b6052be84e6b71ab17edffc2eeabf5c2c3ae1fdb464aae35ac50c67a44e1f7"
 dependencies = [
  "cfg-if",
 ]
+
+[[package]]
+name = "longest-increasing-subsequence"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b3bd0dd2cd90571056fdb71f6275fada10131182f84899f4b2a916e565d81d86"
 
 [[package]]
 name = "lyon"
@@ -2216,19 +2216,6 @@ dependencies = [
  "quote 1.0.6",
  "syn",
  "wasm-bindgen-shared",
-]
-
-[[package]]
-name = "wasm-bindgen-futures"
-version = "0.3.27"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "83420b37346c311b9ed822af41ec2e82839bfe99867ec6c54e2da43b7538771c"
-dependencies = [
- "cfg-if",
- "futures 0.1.29",
- "js-sys",
- "wasm-bindgen",
- "web-sys",
 ]
 
 [[package]]
