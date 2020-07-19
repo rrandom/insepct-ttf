@@ -174,7 +174,11 @@ impl Application for GlyphViewer {
             let row = Row::new()
                 .height(Length::Fill)
                 .max_width(800)
-                .push(self.glyph.view(&self.glyph_info).map(|_| Message::Empty))
+                .push(
+                    self.glyph
+                        .view(&self.glyph_info, 400, 400)
+                        .map(|_| Message::Empty),
+                )
                 .push(self.glyph_info.view().map(|_| Message::Empty));
 
             r = r.push(next_btn).push(prev_btn).push(row)
@@ -274,21 +278,28 @@ mod glyph_canvas {
         Color, Element, Length, Point, Rectangle, Size, Vector,
     };
 
+    use super::glyph_info;
+
+    const GLYPH_MARGIN: f32 = 5.0;
+
     #[derive(Default)]
     pub struct State {
         cache: Cache,
     }
 
-    use super::glyph_info;
-
     impl State {
-        pub fn view<'a>(&'a mut self, glyph_info: &'a glyph_info::GlyphInfo) -> Element<'a, ()> {
+        pub fn view<'a>(
+            &'a mut self,
+            glyph_info: &'a glyph_info::GlyphInfo,
+            width: u16,
+            height: u16,
+        ) -> Element<'a, ()> {
             Canvas::new(GlyphCanvas {
                 state: self,
                 glyph_info,
             })
-            .width(Length::Units(400))
-            .height(Length::Units(400))
+            .width(Length::Units(width))
+            .height(Length::Units(height))
             .into()
         }
 
@@ -305,6 +316,13 @@ mod glyph_canvas {
     impl<'a> canvas::Program<()> for GlyphCanvas<'a> {
         fn draw(&self, bounds: Rectangle, _cursor: Cursor) -> Vec<Geometry> {
             if let Some(bbox) = self.glyph_info.bbox {
+                self.calc_scale(&bounds, &bbox);
+
+                let g = self.state.cache.draw(bounds.size(), |frame| {
+
+                });
+
+
                 let rect = Rectangle::new(
                     Point::new(bbox.x_min.into(), bbox.y_min.into()),
                     Size::new(bbox.width().into(), bbox.height().into()),
@@ -356,10 +374,29 @@ mod glyph_canvas {
                         -1.0 * bbox.y_min as f32,
                     ));
                     frame.fill(&p, Color::from_rgb8(0x0, 0x0, 0x0));
+
+                    frame.fill(
+                        &Path::rectangle(Point::ORIGIN, frame.size()),
+                        Color::from_rgba(0.5, 0.5, 0.5, 0.5)
+                    );
+
                 });
                 return vec![glyph];
             }
             vec![]
+        }
+    }
+
+    impl<'a> GlyphCanvas<'a> {
+        fn calc_scale(&self, bounds: &Rectangle, bbox: &owned_ttf_parser::Rect) {
+            let glyph_width = bounds.width - GLYPH_MARGIN*2.0;
+            let glyph_height = bounds.height - GLYPH_MARGIN*2.0;
+
+            let glyph_scale = glyph_width/((bbox.x_max - bbox.x_min) as f32).min(glyph_height/(bbox.y_max- bbox.y_min) as f32);
+
+            let glyph_baseline = GLYPH_MARGIN + glyph_height * (bbox.y_max / (bbox.y_max - bbox.y_min)) as f32;
+
+            dbg!(&glyph_scale, &glyph_baseline);
         }
     }
 }
