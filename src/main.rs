@@ -156,15 +156,17 @@ impl Application for GlyphViewer {
             .align_items(Align::Center)
             .push(container);
 
-        if let Some(_) = &self.font {
+        if self.font.is_some() {
             let btn = Button::new(&mut self.button, Text::new("Next"))
                 .padding(8)
                 .on_press(Message::Next);
 
+            let row = Row::new().height(Length::Fill).push(self.glyph.view(&self.glyph_info).map(|_| Message::Empty)).push(self.glyph_info.view().map(|_| Message::Empty));
+
+
             r = r
-                .push(Text::new(format!("{:?}", &self.glyph_info.id)))
                 .push(btn)
-                .push(self.glyph.view(&self.glyph_info).map(|_| Message::Empty));
+                .push(row)
         }
 
         r.into()
@@ -325,9 +327,6 @@ mod glyph_canvas {
                     let y_scale: f32 = size.height / bbox.height() as f32;
                     let x_scale: f32 = size.width / bbox.width() as f32;
 
-                    frame.with_save(|f| {
-                    });
-
                     frame.translate(Vector::new(center.x, center.y));
                     frame.scale(y_scale.min(x_scale));
                     frame.rotate(std::f32::consts::PI);
@@ -345,6 +344,8 @@ mod glyph_canvas {
 }
 
 mod glyph_info {
+
+    use iced::Element;
 
     #[derive(Clone)]
     pub struct Outline(pub Vec<DrawType>);
@@ -412,8 +413,19 @@ mod glyph_info {
     }
 
     impl GlyphInfo {
+
         pub fn update(&mut self) {
             self.id.0 = self.id.0 + 1;
+        }
+
+        pub fn view<'a>(&'a self) -> Element<'a, ()> {
+            let mut c = iced::Column::new();
+
+            if self.bbox.is_some() {
+                c = c.push(iced::Text::new(format!("{}", self.id.0)));
+            }
+
+            c.into()
         }
     }
 }
