@@ -1,6 +1,6 @@
 use iced::{
-    button, executor, Align, Application, Button, Column, Command, Container, Element,
-    HorizontalAlignment, Length, Row, Settings, Text, window,
+    button, executor, window, Align, Application, Button, Column, Command, Container, Element,
+    Length, Row, Settings, Text,
 };
 use owned_ttf_parser::{AsFontRef, OwnedFont};
 use std::path::PathBuf;
@@ -11,7 +11,7 @@ pub fn main() {
     GlyphViewer::run(Settings {
         antialiasing: false,
         window: window::Settings {
-            size: (400, 400),
+            size: (800, 800),
             ..window::Settings::default()
         },
         ..Settings::default()
@@ -103,13 +103,9 @@ impl Application for GlyphViewer {
         let open_btn = Button::new(&mut self.button_state, Text::new("open"))
             .on_press(Message::OpenFilePressed);
 
-        let project_label = Text::new("Font Path: ")
-            .width(Length::Shrink)
-            .size(32)
-            .color([0.5, 0.5, 0.5])
-            .horizontal_alignment(HorizontalAlignment::Left);
+        let project_label = Text::new("Font Path: ").width(Length::Shrink);
 
-        let path = self
+        let path_txt = self
             .font_path
             .as_ref()
             .and_then(|v| v.to_str())
@@ -121,11 +117,12 @@ impl Application for GlyphViewer {
             .and_then(|f| f.as_font().family_name())
             .unwrap_or_default();
 
-        let row = Row::new()
+        let font_path_row = Row::new()
             .spacing(20)
             .push(open_btn)
             .push(project_label)
-            .push(Text::new(path));
+            .push(Text::new(path_txt))
+            .align_items(Align::Center);
 
         let number_of_glyphs = self
             .font
@@ -138,21 +135,22 @@ impl Application for GlyphViewer {
             })
             .unwrap_or_default();
 
-        let info_row = Row::new()
-            .push(Text::new(format!("Font name: {} ;", font_name)))
+        let font_info_row = Row::new()
+            .push(Text::new(format!("Font name: {} ; ", font_name)))
             .push(Text::new(number_of_glyphs));
 
         let content = Column::new()
             .max_width(800)
             .spacing(20)
-            .push(row)
-            .push(info_row);
+            .push(font_path_row)
+            .push(font_info_row);
 
         let container = Container::new(content).width(Length::Fill).center_x();
 
         let mut r = Column::new()
-            .padding(0)
-            .spacing(0)
+            .padding(20)
+            .spacing(10)
+            .max_width(800)
             .align_items(Align::Center)
             .push(container);
 
@@ -161,12 +159,13 @@ impl Application for GlyphViewer {
                 .padding(8)
                 .on_press(Message::Next);
 
-            let row = Row::new().height(Length::Fill).push(self.glyph.view(&self.glyph_info).map(|_| Message::Empty)).push(self.glyph_info.view().map(|_| Message::Empty));
+            let row = Row::new()
+                .height(Length::Fill)
+                .max_width(800)
+                .push(self.glyph.view(&self.glyph_info).map(|_| Message::Empty))
+                .push(self.glyph_info.view().map(|_| Message::Empty));
 
-
-            r = r
-                .push(btn)
-                .push(row)
+            r = r.push(btn).push(row)
         }
 
         r.into()
@@ -413,7 +412,6 @@ mod glyph_info {
     }
 
     impl GlyphInfo {
-
         pub fn update(&mut self) {
             self.id.0 = self.id.0 + 1;
         }
@@ -421,8 +419,12 @@ mod glyph_info {
         pub fn view<'a>(&'a self) -> Element<'a, ()> {
             let mut c = iced::Column::new();
 
-            if self.bbox.is_some() {
-                c = c.push(iced::Text::new(format!("{}", self.id.0)));
+            if let Some(rect) = self.bbox {
+                c = c.push(iced::Text::new(format!("Index {}", self.id.0)))
+                .push(iced::Text::new(format!("xMin {}", &rect.x_min)))
+                .push(iced::Text::new(format!("xMax {}", &rect.x_max)))
+                .push(iced::Text::new(format!("yMin {}", &rect.y_min)))
+                .push(iced::Text::new(format!("yMax {}", &rect.y_max)));
             }
 
             c.into()
