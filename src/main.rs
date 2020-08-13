@@ -162,7 +162,7 @@ impl Application for GlyphViewer {
             .align_items(Align::Center)
             .push(container);
 
-        if self.font.is_some() {
+        if let Some(font) = &self.font {
             let next_btn = Button::new(&mut self.next_button, Text::new("Next"))
                 .padding(8)
                 .on_press(Message::Next);
@@ -176,7 +176,7 @@ impl Application for GlyphViewer {
                 .max_width(800)
                 .push(
                     self.glyph
-                        .view(&self.glyph_info, 400, 400)
+                        .view(&font.as_font(), &self.glyph_info, 400, 400)
                         .map(|_| Message::Empty),
                 )
                 .push(self.glyph_info.view().map(|_| Message::Empty));
@@ -275,12 +275,13 @@ mod glyph_canvas {
 
     use iced::{
         canvas::{self, Cache, Canvas, Cursor, Geometry, Path},
-        Color, Element, Length, Point, Rectangle, Size, Vector,
+        Color, Element, Length, Point, Rectangle, Vector,
     };
 
     use super::glyph_info;
 
     const GLYPH_MARGIN: f32 = 5.0;
+    const FONT_SIZE: f32 = 128.0;
 
     #[derive(Default)]
     pub struct State {
@@ -290,12 +291,14 @@ mod glyph_canvas {
     impl State {
         pub fn view<'a>(
             &'a mut self,
+            font: &'a owned_ttf_parser::Font,
             glyph_info: &'a glyph_info::GlyphInfo,
             width: u16,
             height: u16,
         ) -> Element<'a, ()> {
             Canvas::new(GlyphCanvas {
                 state: self,
+                font,
                 glyph_info,
             })
             .width(Length::Units(width))
@@ -310,76 +313,40 @@ mod glyph_canvas {
 
     struct GlyphCanvas<'a> {
         state: &'a mut State,
+        font: &'a owned_ttf_parser::Font<'a>,
         glyph_info: &'a glyph_info::GlyphInfo,
     }
 
     impl<'a> canvas::Program<()> for GlyphCanvas<'a> {
         fn draw(&self, bounds: Rectangle, _cursor: Cursor) -> Vec<Geometry> {
             if let Some(bbox) = self.glyph_info.bbox {
-                self.calc_scale(&bounds, &bbox);
+                let units_per_em = self
+                    .font
+                    .units_per_em()
+                    .ok_or("invalid units per em")
+                    .unwrap();
+                let scale = FONT_SIZE / units_per_em as f32;
 
-                let g = self.state.cache.draw(bounds.size(), |frame| {
+                // self.calc_scale(&bounds, &bbox);
 
-                });
+                let glyph = self.state.cache.draw(bounds.size(), |frame| {
+                    let path = self.get_path();
+                    let cell_size = bounds.height.min(bounds.width);
 
+                    let bbox_w = (bbox.x_max - bbox.x_min) as f32 * scale;
+                    let dx = (cell_size - bbox_w) / 2.0;
+                    let y = cell_size + self.font.descender() as f32 * scale;
 
-                let rect = Rectangle::new(
-                    Point::new(bbox.x_min.into(), bbox.y_min.into()),
-                    Size::new(bbox.width().into(), bbox.height().into()),
-                );
+                    frame.translate(Vector::new(dx as f32, y as f32));
+                    frame.scale(scale, scale);
+                    frame.scale(1.0, -1.0);
 
-                let glyph = self.state.cache.draw(rect.size(), |frame| {
-                    let center = frame.center();
-
-                    let p = Path::new(|p| {
-                        use super::glyph_info::DrawType::*;
-                        for c in &self.glyph_info.outline.clone().take().unwrap().0 {
-                            match c {
-                                MoveTo { x, y } => p.move_to(Point::new(*x, *y)),
-                                LineTo { x, y } => p.line_to(Point::new(*x, *y)),
-                                QuadTo { x1, y1, x, y } => {
-                                    p.quadratic_curve_to(Point::new(*x1, *y1), Point::new(*x, *y))
-                                }
-                                CurveTo {
-                                    x1,
-                                    y1,
-                                    x2,
-                                    y2,
-                                    x,
-                                    y,
-                                } => {
-                                    p.bezier_curve_to(
-                                        Point::new(*x1, *y1),
-                                        Point::new(*x2, *y2),
-                                        Point::new(*x, *y),
-                                    );
-                                }
-                                Close => {
-                                    p.close();
-                                }
-                            }
-                        }
-                    });
-
-                    let size = bounds.size();
-
-                    let y_scale: f32 = size.height / bbox.height() as f32;
-                    let x_scale: f32 = size.width / bbox.width() as f32;
-
-                    frame.translate(Vector::new(center.x, center.y));
-                    frame.scale(y_scale.min(x_scale));
-                    frame.rotate(std::f32::consts::PI);
-                    frame.translate(Vector::new(
-                        -1.0 * bbox.x_min as f32,
-                        -1.0 * bbox.y_min as f32,
-                    ));
-                    frame.fill(&p, Color::from_rgb8(0x0, 0x0, 0x0));
+                    frame.fill(&path, Color::from_rgb8(0x0, 0x0, 0x0));
 
                     frame.fill(
-                        &Path::rectangle(Point::ORIGIN, frame.size()),
-                        Color::from_rgba(0.5, 0.5, 0.5, 0.5)
+                        &Path::rectangle(Point::ORIGIN, bounds.size()),
+                        Color::from_rgba(0.5, 0.5, 0.5, 0.5),
                     );
-
                 });
                 return vec![glyph];
             }
@@ -388,13 +355,48 @@ mod glyph_canvas {
     }
 
     impl<'a> GlyphCanvas<'a> {
+        fn get_path(&self) -> Path {
+            Path::new(|p| {
+                use super::glyph_info::DrawType::*;
+                for c in &self.glyph_info.outline.clone().take().unwrap().0 {
+                    match c {
+                        MoveTo { x, y } => p.move_to(Point::new(*x, *y)),
+                        LineTo { x, y } => p.line_to(Point::new(*x, *y)),
+                        QuadTo { x1, y1, x, y } => {
+                            p.quadratic_curve_to(Point::new(*x1, *y1), Point::new(*x, *y))
+                        }
+                        CurveTo {
+                            x1,
+                            y1,
+                            x2,
+                            y2,
+                            x,
+                            y,
+                        } => {
+                            p.bezier_curve_to(
+                                Point::new(*x1, *y1),
+                                Point::new(*x2, *y2),
+                                Point::new(*x, *y),
+                            );
+                        }
+                        Close => {
+                            p.close();
+                        }
+                    }
+                }
+            })
+        }
+
         fn calc_scale(&self, bounds: &Rectangle, bbox: &owned_ttf_parser::Rect) {
-            let glyph_width = bounds.width - GLYPH_MARGIN*2.0;
-            let glyph_height = bounds.height - GLYPH_MARGIN*2.0;
+            let glyph_width = bounds.width - GLYPH_MARGIN * 2.0;
+            let glyph_height = bounds.height - GLYPH_MARGIN * 2.0;
 
-            let glyph_scale = glyph_width/((bbox.x_max - bbox.x_min) as f32).min(glyph_height/(bbox.y_max- bbox.y_min) as f32);
+            let glyph_scale = glyph_width
+                / ((bbox.x_max - bbox.x_min) as f32)
+                    .min(glyph_height / (bbox.y_max - bbox.y_min) as f32);
 
-            let glyph_baseline = GLYPH_MARGIN + glyph_height * (bbox.y_max / (bbox.y_max - bbox.y_min)) as f32;
+            let glyph_baseline =
+                GLYPH_MARGIN + glyph_height * (bbox.y_max / (bbox.y_max - bbox.y_min)) as f32;
 
             dbg!(&glyph_scale, &glyph_baseline);
         }
