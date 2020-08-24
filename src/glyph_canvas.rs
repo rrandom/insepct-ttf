@@ -1,4 +1,3 @@
-
 use iced::{
     canvas::{self, Cache, Canvas, Cursor, Geometry, Path},
     Color, Element, Length, Point, Rectangle, Vector,
@@ -95,7 +94,6 @@ impl<'a> canvas::Program<()> for GlyphCanvas<'a> {
                 self.h_line("Baseline", 0.0, frame);
                 self.h_line("Ascender", self.font.ascender() as f32, frame);
                 self.h_line("Descender", self.font.descender() as f32, frame);
-
             });
             return vec![glyph];
         }
@@ -105,35 +103,7 @@ impl<'a> canvas::Program<()> for GlyphCanvas<'a> {
 
 impl<'a> GlyphCanvas<'a> {
     fn get_path(&self) -> Path {
-        Path::new(|p| {
-            use super::glyph_info::DrawType::*;
-            for c in &self.glyph_info.outline.clone().take().unwrap().0 {
-                match c {
-                    MoveTo { x, y } => p.move_to(Point::new(*x, *y)),
-                    LineTo { x, y } => p.line_to(Point::new(*x, *y)),
-                    QuadTo { x1, y1, x, y } => {
-                        p.quadratic_curve_to(Point::new(*x1, *y1), Point::new(*x, *y))
-                    }
-                    CurveTo {
-                        x1,
-                        y1,
-                        x2,
-                        y2,
-                        x,
-                        y,
-                    } => {
-                        p.bezier_curve_to(
-                            Point::new(*x1, *y1),
-                            Point::new(*x2, *y2),
-                            Point::new(*x, *y),
-                        );
-                    }
-                    Close => {
-                        p.close();
-                    }
-                }
-            }
-        })
+        self.glyph_info.outline.clone().take().unwrap()
     }
 
     fn h_line(&self, content: &str, y: f32, frame: &mut iced::canvas::Frame) {

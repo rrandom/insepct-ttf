@@ -10,6 +10,7 @@ use dialog::RawFontInfo;
 mod dialog;
 mod glyph_canvas;
 mod glyph_info;
+mod utils;
 
 pub fn main() {
     GlyphViewer::run(Settings {
@@ -35,13 +36,6 @@ enum Message {
     Empty,
     Next,
     Prev,
-}
-
-pub async fn parse_font(data: Vec<u8>) -> Option<owned_ttf_parser::OwnedFont> {
-    match async { return OwnedFont::from_vec(data, 0) }.await {
-        Some(f) => Some(f),
-        None => None,
-    }
 }
 
 struct GlyphViewer {
@@ -195,9 +189,9 @@ impl Application for GlyphViewer {
 impl GlyphViewer {
     fn update_glyph(&mut self) {
         if let Some(font) = &self.font {
-            let mut b = glyph_info::Outline(Vec::new());
-            self.glyph_info.bbox = font.as_font().outline_glyph(self.glyph_info.id, &mut b);
-            self.glyph_info.outline = Some(b);
+            let (bbox, outline) = utils::get_bbox_outline(font, self.glyph_info.id);
+            self.glyph_info.bbox = bbox;
+            self.glyph_info.outline = Some(outline);
         }
     }
 }
