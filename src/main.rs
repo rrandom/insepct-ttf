@@ -10,6 +10,7 @@ use dialog::RawFontInfo;
 mod dialog;
 mod glyph_canvas;
 mod glyph_info;
+mod overview;
 mod utils;
 
 pub fn main() {
@@ -41,6 +42,7 @@ enum Message {
 struct GlyphViewer {
     font_path: Option<PathBuf>,
     button_state: button::State,
+    overview: overview::State,
     glyph: glyph_canvas::State,
     font: Option<OwnedFont>,
     next_button: button::State,
@@ -57,6 +59,7 @@ impl Application for GlyphViewer {
         let app = GlyphViewer {
             font_path: None,
             button_state: Default::default(),
+            overview: Default::default(),
             glyph: Default::default(),
             glyph_info: Default::default(),
             font: None,
@@ -169,6 +172,12 @@ impl Application for GlyphViewer {
                 .padding(8)
                 .on_press(Message::Prev);
 
+            let overview_row = Row::new().height(Length::Units(400)).push(
+                self.overview
+                    .view(&font.as_font(), 650, 650)
+                    .map(|_| Message::Empty),
+            );
+
             let row = Row::new()
                 .height(Length::Fill)
                 .max_width(800)
@@ -179,7 +188,8 @@ impl Application for GlyphViewer {
                 )
                 .push(self.glyph_info.view().map(|_| Message::Empty));
 
-            r = r.push(next_btn).push(prev_btn).push(row)
+            // r = r.push(next_btn).push(prev_btn).push(row)
+            r = r.push(overview_row).push(row);
         }
 
         r.into()
@@ -189,7 +199,7 @@ impl Application for GlyphViewer {
 impl GlyphViewer {
     fn update_glyph(&mut self) {
         if let Some(font) = &self.font {
-            let (bbox, outline) = utils::get_bbox_outline(font, self.glyph_info.id);
+            let (bbox, outline) = utils::get_bbox_outline(font.as_font(), self.glyph_info.id);
             self.glyph_info.bbox = bbox;
             self.glyph_info.outline = Some(outline);
         }

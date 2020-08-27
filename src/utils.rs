@@ -36,13 +36,13 @@ impl owned_ttf_parser::OutlineBuilder for OutlineBuilder {
 }
 
 pub fn get_bbox_outline(
-    font: &OwnedFont,
+    font: &owned_ttf_parser::Font,
     id: owned_ttf_parser::GlyphId,
 ) -> (Option<owned_ttf_parser::Rect>, canvas::Path) {
     let builder = canvas::path::Builder::new();
 
     let mut outline = OutlineBuilder { inner: builder };
-    let bbox = font.as_font().outline_glyph(id, &mut outline);
+    let bbox = font.outline_glyph(id, &mut outline);
 
     (bbox, outline.inner.build())
 }
