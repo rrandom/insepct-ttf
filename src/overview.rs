@@ -1,15 +1,19 @@
 use iced::{
-    canvas::{self, Cache, Canvas, Cursor, Frame, Geometry, Stroke, Text},
-    Color, Element, Length, Point, Rectangle, Vector,
+    canvas::{self, Cache, Canvas, Cursor, Event, Frame, Geometry, Stroke, Text},
+    mouse, Color, Element, Length, Point, Rectangle, Vector,
 };
 
 #[derive(Default)]
 pub struct State {
     cache: Cache,
 }
+#[derive(Debug, Clone)]
+pub enum OverviewMessage {
+    ClickGlyph(i8),
+}
 
-const ROWS: u8 = 5;
-const COLUMNS: u8 = 10;
+const ROWS: i8 = 5;
+const COLUMNS: i8 = 10;
 const CELL_SIZE: f32 = 60.0;
 
 impl State {
@@ -18,7 +22,7 @@ impl State {
         font: &'a owned_ttf_parser::Font,
         width: u16,
         height: u16,
-    ) -> Element<'a, ()> {
+    ) -> Element<'a, OverviewMessage> {
         Canvas::new(OverviewCanvas { state: self, font })
             .width(Length::Units(width))
             .height(Length::Units(height))
@@ -35,13 +39,13 @@ struct OverviewCanvas<'a> {
     font: &'a owned_ttf_parser::Font<'a>,
 }
 
-impl<'a> canvas::Program<()> for OverviewCanvas<'a> {
+impl<'a> canvas::Program<OverviewMessage> for OverviewCanvas<'a> {
     fn draw(&self, bounds: Rectangle, _cursor: Cursor) -> Vec<Geometry> {
         let items = self.state.cache.draw(bounds.size(), |frame| {
             self.draw_grid(frame);
 
             let n = ((ROWS * COLUMNS) as u16).min(self.font.number_of_glyphs());
-            let mut row = 0;
+            let mut _row = 0;
             let mut column = 0;
 
             let scale = CELL_SIZE / self.font.height() as f32;
@@ -76,7 +80,7 @@ impl<'a> canvas::Program<()> for OverviewCanvas<'a> {
                 column += 1;
                 if column == COLUMNS {
                     column = 0;
-                    row += 1;
+                    _row += 1;
                     frame.translate(Vector::new(
                         -self.font.height() as f32 * (COLUMNS - 1) as f32,
                         -self.font.height() as f32,
@@ -87,6 +91,35 @@ impl<'a> canvas::Program<()> for OverviewCanvas<'a> {
             }
         });
         vec![items]
+    }
+
+    fn update(
+        &mut self,
+        event: Event,
+        bounds: Rectangle,
+        cursor: Cursor,
+    ) -> Option<OverviewMessage> {
+        let cursor_position = cursor.position_in(&bounds)?;
+
+        match event {
+            Event::Mouse(mouse_event) => {
+                match mouse_event {
+                    mouse::Event::ButtonPressed(mouse::Button::Left) => {
+                        let row = cursor_position.y / CELL_SIZE;
+                        let col = cursor_position.x / CELL_SIZE;
+        
+                        let id = row as i8 * COLUMNS + col as i8;
+                        dbg!(cursor_position, id);
+        
+                        return Some(OverviewMessage::ClickGlyph(id));
+                    }
+
+                    _=> ()
+                }
+            }
+        }
+
+        None
     }
 }
 

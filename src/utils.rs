@@ -1,5 +1,4 @@
 use iced::{canvas, Point};
-use owned_ttf_parser::{AsFontRef, OwnedFont};
 
 // pub async fn parse_font(data: Vec<u8>) -> Option<owned_ttf_parser::OwnedFont> {
 //   match async { return OwnedFont::from_vec(data, 0) }.await {

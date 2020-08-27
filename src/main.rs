@@ -35,8 +35,7 @@ enum Message {
     OpenFilePressed,
     Loaded(Result<RawFontInfo, LoadError>),
     Empty,
-    Next,
-    Prev,
+    Overview(overview::OverviewMessage),
 }
 
 struct GlyphViewer {
@@ -45,8 +44,6 @@ struct GlyphViewer {
     overview: overview::State,
     glyph: glyph_canvas::State,
     font: Option<OwnedFont>,
-    next_button: button::State,
-    prev_button: button::State,
     glyph_info: glyph_info::GlyphInfo,
 }
 
@@ -63,8 +60,6 @@ impl Application for GlyphViewer {
             glyph: Default::default(),
             glyph_info: Default::default(),
             font: None,
-            next_button: Default::default(),
-            prev_button: Default::default(),
         };
         (app, Command::none())
     }
@@ -82,24 +77,10 @@ impl Application for GlyphViewer {
                     self.font = OwnedFont::from_vec(data, 0);
                 }
             }
-            Message::Next => {
-                if let Some(font) = &self.font {
-                    let total = font.as_font().number_of_glyphs();
-                    if self.glyph_info.id.0 < total {
-                        self.glyph_info.next();
-                        self.update_glyph();
-                        self.glyph.request_redraw();
-                    }
-                }
-            }
-            Message::Prev => {
-                if let Some(_font) = &self.font {
-                    if self.glyph_info.id.0 > 0 {
-                        self.glyph_info.prev();
-                        self.update_glyph();
-                        self.glyph.request_redraw();
-                    }
-                }
+            Message::Overview(overview::OverviewMessage::ClickGlyph(id)) => {
+                self.glyph_info.id = owned_ttf_parser::GlyphId(id as u16);
+                self.update_glyph();
+                self.glyph.request_redraw();
             }
 
             _ => {}
@@ -164,18 +145,10 @@ impl Application for GlyphViewer {
             .push(container);
 
         if let Some(font) = &self.font {
-            let next_btn = Button::new(&mut self.next_button, Text::new("Next"))
-                .padding(8)
-                .on_press(Message::Next);
-
-            let prev_btn = Button::new(&mut self.prev_button, Text::new("Prev"))
-                .padding(8)
-                .on_press(Message::Prev);
-
             let overview_row = Row::new().height(Length::Units(400)).push(
                 self.overview
-                    .view(&font.as_font(), 650, 650)
-                    .map(|_| Message::Empty),
+                    .view(&font.as_font(), 602, 602)
+                    .map(Message::Overview),
             );
 
             let row = Row::new()

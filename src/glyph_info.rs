@@ -8,13 +8,6 @@ pub struct GlyphInfo {
 }
 
 impl GlyphInfo {
-    pub fn next(&mut self) {
-        self.id.0 += 1;
-    }
-
-    pub fn prev(&mut self) {
-        self.id.0 -= 1;
-    }
 
     pub fn view(&self) -> Element<()> {
         let mut c = iced::Column::new();
